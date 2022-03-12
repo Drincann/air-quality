@@ -93,13 +93,13 @@ def stackedAreaPic(df, saveto='./堆积图.png', dpi=300):
     percent = y / y.sum(axis=0).astype(float) * 100
 
     ax.stackplot(x, percent, colors=colors)
-    # .append(pd.Series([x[::24].iat[-1] + pd.Timedelta(days=1)] ))
     resample = x[::24]
     ax.set_xticks(resample)
     ax.set_xticklabels(resample.apply(lambda date: date.strftime(
         "%m/%d")).values, rotation=90, fontproperties=fonts['en'])
     plt.yticks(fontproperties=fonts['en'])
     plt.ylabel('贡献率 (%)')
+    plt.xlabel('时间')
     plt.margins(0, 0)  # Set margins to avoid "whitespace"
     plt.legend(ylabels, ncol=len(ylabels), loc=(0, 1.01), frameon=False)
     plt.savefig(saveto, dpi=300, bbox_inches='tight')
@@ -112,15 +112,10 @@ def contributionPicWithLegend(df, saveto='./贡献图.png', dpi=300):
     sizes = df.values[0]
     labelsMap = dict(zip(ylabels, sizes))
     sizes = [labelsMap[label] for label in labels]
-    # font dpi
     plt.rcParams['font.size'] = 16
     plt.rcParams['figure.dpi'] = dpi
 
-    # 白色背景
     plt.subplots(figsize=(10, 5), facecolor='white')
-    # fig1.subplots_adjust(0.3, 0, 1, 1)
-    # edgecolor black
-    # font
 
     plt.pie(sizes, labels=['%.1f%%' % labelsMap[label] for label in labels],
             shadow=False, startangle=90, colors=colors,
@@ -133,8 +128,6 @@ def contributionPicWithLegend(df, saveto='./贡献图.png', dpi=300):
         labels=labels,
         prop={'size': 16},
         bbox_to_anchor=(0.8, 0.7),
-        # bbox_transform=fig1.transFigure,
-
     )
 
     plt.axis('equal')
@@ -145,23 +138,21 @@ def contributionPicWithLegend(df, saveto='./贡献图.png', dpi=300):
 def analysisPic(df, whichleft=[], saveto='./识别图.png', dpi=300):
     whichleft = set(whichleft)
     fonts = displayUnicode()
-    # font dpi
     plt.rcParams['font.size'] = 15
     plt.rcParams['figure.dpi'] = dpi
     plt.figure(figsize=(10, 15), facecolor='white')
-
-    # 坐标轴 font
 
     xlabels = df[df.keys()[0]]
     picCount = len(df.keys()) - 1
     width = 0.4
     for i, ylabels in enumerate(labels):
         plt.subplot(picCount, 1, i + 1)
-        # random color
+        if i == 3:
+            plt.ylabel('% of Species',
+                       fontproperties=fonts['en'], fontsize=25, labelpad=10,)
         if i == picCount - 1:
             plt.bar(xlabels, height=df[ylabels], width=width,
                     color=colorsMap[ylabels], edgecolor='#000000',)
-           # label 旋转 45
             plt.xticks(xlabels, rotation=60, fontproperties=fonts['en'])
             plt.ylim(0, 100)
             plt.yticks(fontproperties=fonts['en'])
@@ -174,6 +165,7 @@ def analysisPic(df, whichleft=[], saveto='./识别图.png', dpi=300):
             plt.legend((ylabels,), loc='upper left', frameon=False)
         else:
             plt.legend((ylabels,), loc='upper right', frameon=False)
+
     plt.savefig(saveto, dpi=300, bbox_inches='tight')
     plt.show()
 
