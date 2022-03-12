@@ -185,7 +185,7 @@ def main():
     contributionPicWithLegend(df, saveto='贡献图.png', dpi=args.dpi)
 
     df = pd.read_excel(args.input, sheet_name="识别图")
-    analysisPic(df, whichleft=args.whichleft,
+    analysisPic(df, whichleft=args.whichleft if args.whichleft is not None else [],
                 saveto='./识别图.png', dpi=args.dpi,)
 
     df = pd.read_excel(args.input, sheet_name="堆积图")
