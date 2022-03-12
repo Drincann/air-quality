@@ -95,7 +95,7 @@ def stackedAreaPic(df, saveto='./堆积图.png', dpi=300):
     ax.stackplot(x, percent, colors=colors)
     # .append(pd.Series([x[::24].iat[-1] + pd.Timedelta(days=1)] ))
     resample = x[::24]
-    ax.set_xticks(resample, rotation=90, fontproperties=fonts['en'])
+    ax.set_xticks(resample)
     ax.set_xticklabels(resample.apply(lambda date: date.strftime(
         "%m/%d")).values, rotation=90, fontproperties=fonts['en'])
     plt.yticks(fontproperties=fonts['en'])
