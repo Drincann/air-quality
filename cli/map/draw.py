@@ -157,8 +157,8 @@ def draw(*, saveto,  vmin, vmax, lons, lats, values, dpi, unit, text):
     ax.add_feature(cfeature.OCEAN.with_scale('110m'))
 
     # 底图灰色遮罩
-    ax.add_geometries([mpatches.Polygon(np.array([[72, 3], [140, 3], [140, 55], [72, 55]]))],
-                      ccrs.PlateCarree(), facecolor='gray', edgecolor='k', linewidth=1.5, alpha=0.3, zorder=1)
+    # ax.add_geometries([mpatches.Polygon(np.array([[72, 3], [140, 3], [140, 55], [72, 55]]))],
+    #                   ccrs.PlateCarree(), facecolor='gray', edgecolor='k', linewidth=1.5, alpha=0.3, zorder=1)
 
     # colorbar 步长序列，小数后一位
     cbarticks = [round(v, 1) for v in np.arange(vmin, vmax, (vmax-vmin)/5)]
@@ -191,13 +191,10 @@ def draw(*, saveto,  vmin, vmax, lons, lats, values, dpi, unit, text):
     gl.top_labels = False
     gl.right_labels = False
     ax.tick_params(axis='both', which='major', labelsize=16, direction='out')
-
     # 绘制比例尺
     scale_bar(ax, 1000, location=(0.5, 0.05))
-
     # 右上角绘制指北针
     add_north(ax, loc_x=0.95)
-
     ax2 = fig.add_axes(
         [0.73, 0.15, 0.23, 0.27],  # left, bottom, width, height
         projection=ccrs.PlateCarree()
@@ -214,7 +211,7 @@ def draw(*, saveto,  vmin, vmax, lons, lats, values, dpi, unit, text):
                 cmap=cm.Spectral_r, norm=norm, alpha=1)
     ax.spines['left'].set_visible(False)
     plt.savefig(saveto, dpi=dpi, bbox_inches='tight')
-    plt.show()
+    # plt.show()
 
 
 def main():
