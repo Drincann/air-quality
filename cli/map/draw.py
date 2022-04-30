@@ -125,7 +125,7 @@ def draw(*, saveto,  vmin, vmax, lons, lats, values, dpi, trtext=None):
     ax.add_feature(cfeature.LAND.with_scale('110m'))
     ax.add_feature(cfeature.OCEAN.with_scale('110m'))
 
-    cbarticks = [v for v in np.arange(vmin, vmax, (vmax-vmin)/5)]
+    cbarticks = [round(v, 1) for v in np.arange(vmin, vmax, (vmax-vmin)/5)]
     norm = mpl.colors.Normalize(vmin=cbarticks[0], vmax=cbarticks[-1])
     # 画点
     im = ax.scatter(lons, lats, c=values, s=1, transform=ccrs.PlateCarree(
