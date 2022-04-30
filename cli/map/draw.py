@@ -8,6 +8,7 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import argparse
 import matplotlib.patches as mpatches
+import shapefile
 argparser = argparse.ArgumentParser(description='Draw')
 argparser.add_argument('-i', '--input',  type=str,
                        required=True, help='input csv file')
@@ -17,8 +18,8 @@ argparser.add_argument('-t', '--latName',  type=str, nargs='+',
                        help='name of latitude col in csv', default='lat')
 argparser.add_argument('-v', '--dataName',  type=str, nargs='+',
                        help='name of data col in csv', default='data')
-argparser.add_argument('-x', '--trtext', type=str, nargs='+',
-                       required=False, help='the text align to the top right', default='')
+argparser.add_argument('-u', '--unit', type=str, nargs='+',
+                       required=False, help='the unit align to the top right and colorbar', default='μg/m³')
 argparser.add_argument('-d', '--dpi', type=int, required=False, default=300,)
 argparser.add_argument('-o', '--output', type=str,
                        help='output png file', default='output.png')
@@ -28,8 +29,6 @@ currFileDir = os.path.join(os.path.dirname(os.path.realpath(__file__)))
 
 
 # https://stackoverflow.com/questions/32333870/how-can-i-show-a-km-ruler-on-a-cartopy-matplotlib-plot
-
-
 def scale_bar(ax, length=None, location=(0.5, 0.05), linewidth=3):
     """
     ax is the axes to draw the scalebar on.
@@ -107,29 +106,66 @@ def add_north(ax1, labelsize=20, loc_x=0.92, loc_y=0.9, width=0.03, height=0.1, 
     ax1.add_patch(triangle)
 
 
-def draw(*, saveto,  vmin, vmax, lons, lats, values, dpi, trtext=None):
+def isInPolygon(position, polygons):  # 传参为待测点和多边形,判断该点是否在多边形内部，点为单个数，多边形为数组
+    # 从待求点引一条射线，该射线与多边形交点为奇数个则点在多边形内部
+    sign = 0  # 标志位
+    st = 1
+    lon = position[0]
+    lat = position[1]
+    for polygon in polygons:
+        for loop_one in range(len(polygon.points)-1):  # 循环所有的点
+            if len(polygon.parts) != 1:  # 跳过每块的结束的点
+                if loop_one == polygon.parts[st]-1:
+                    if st != len(polygon.parts)-1:
+                        st += 1
+                    continue
+            if (polygon.points[loop_one][1] >= lat and polygon.points[loop_one+1][1] <= lat) or (polygon.points[loop_one][1] <= lat and polygon.points[loop_one+1][1] >= lat):  # 粗判断范围
+                # 线段坐标x均小于待求点，线在点的左边
+                if polygon.points[loop_one][0] < lon and polygon.points[loop_one+1][0] < lon:
+                    continue
+                # 线段坐标x均大于待求点，线在点的右边
+                elif polygon.points[loop_one][0] > lon and polygon.points[loop_one+1][0] > lon:
+                    sign += 1
+                else:
+                    k = (polygon.points[loop_one][1]-polygon.points[loop_one+1][1])/(
+                        polygon.points[loop_one][0]-polygon.points[loop_one+1][0])  # 求斜率
+                    x = (lat-polygon.points[loop_one][1])/k + \
+                        polygon.points[loop_one][0]  # 使用点斜式求交点的x坐标值
+                    if x >= lon:
+                        sign += 1
+        if sign % 2 != 0:
+            return True
+    return False
+
+
+def draw(*, saveto,  vmin, vmax, lons, lats, values, dpi, unit, text):
     fig = plt.figure(figsize=[15, 10], dpi=150)
     ax = plt.axes(projection=ccrs.PlateCarree())
-
     ax.set_extent([72, 140, 15, 55], crs=ccrs.PlateCarree())
     startLon, endLon, startLat, endLat = ax.get_extent(ccrs.PlateCarree())
-    with open(os.path.join(currFileDir, 'CN-border-La.gmt')) as src:
+    with open(os.path.join(currFileDir, './CN-border-La.gmt')) as src:
         context = ''.join([line for line in src if not line.startswith('#')])
         blocks = [cnt for cnt in context.split('>') if len(cnt) > 0]
         borders = [np.fromstring(block, dtype=float, sep=' ')
                    for block in blocks]
+
     # 绘制国界省界
     for border in borders:
-        ax.plot(border[0::2], border[1::2], color='black',
-                linewidth=1.5, transform=ccrs.PlateCarree(), alpha=0.2)
+        ax.plot(border[0::2], border[1::2], color='black', linewidth=1.5,
+                transform=ccrs.PlateCarree(), alpha=0.2, zorder=3)
     ax.add_feature(cfeature.LAND.with_scale('110m'))
     ax.add_feature(cfeature.OCEAN.with_scale('110m'))
 
+    # 底图灰色遮罩
+    ax.add_geometries([mpatches.Polygon(np.array([[72, 3], [140, 3], [140, 55], [72, 55]]))],
+                      ccrs.PlateCarree(), facecolor='gray', edgecolor='k', linewidth=1.5, alpha=0.3, zorder=1)
+
+    # colorbar 步长序列，小数后一位
     cbarticks = [round(v, 1) for v in np.arange(vmin, vmax, (vmax-vmin)/5)]
     norm = mpl.colors.Normalize(vmin=cbarticks[0], vmax=cbarticks[-1])
-    # 画点
+    # 浓度
     im = ax.scatter(lons, lats, c=values, s=1, transform=ccrs.PlateCarree(
-    ), cmap=cm.Spectral_r, norm=norm, alpha=1)
+    ), cmap=cm.Spectral_r, norm=norm, alpha=1, zorder=2)
 
     fig.subplots_adjust(right=0.93)
     position = fig.add_axes([0.95, 0.22, 0.015, .55])  # 位置[左,下,右,上]
@@ -139,13 +175,14 @@ def draw(*, saveto,  vmin, vmax, lons, lats, values, dpi, trtext=None):
         'weight': 'normal',
         'size': 20,
     }
-    cb.set_label('μg/m³', fontdict=font)
+    cb.set_label(unit, fontdict=font)
     cb.set_ticks(cbarticks)
     tl = cb.ax.set_yticklabels(cbarticks, fontdict=font)
     cb.ax.tick_params(labelsize=16, direction='out')
+    # cb.ax.yaxis.set_tick_params(pad=22)  # your number may vary
 
     # 右上角 text
-    ax.text(1.05, 0.98, trtext, transform=ax.transAxes, fontsize=20,
+    ax.text(1.15, 0.98, f'{text}{unit}', transform=ax.transAxes, fontsize=16,
             horizontalalignment='right', verticalalignment='top', zorder=3)
 
     # 经纬度 刻度
@@ -154,37 +191,25 @@ def draw(*, saveto,  vmin, vmax, lons, lats, values, dpi, trtext=None):
     gl.top_labels = False
     gl.right_labels = False
     ax.tick_params(axis='both', which='major', labelsize=16, direction='out')
-    # ax.set_xlabel('经度', fontproperties=fm.FontProperties(fname='STHeiti Medium.ttc'), fontsize=16)
-    # ax.set_ylabel('纬度', fontproperties=fm.FontProperties(fname='STHeiti Medium.ttc'), fontsize=16)
 
     # 绘制比例尺
     scale_bar(ax, 1000, location=(0.5, 0.05))
 
     # 右上角绘制指北针
     add_north(ax, loc_x=0.95)
-    # 边框粗细
-    ax.spines['top'].set_linewidth(10)
-    ax.spines['left'].set_linewidth(10)
-    ax.spines['right'].set_linewidth(10)
-    ax.spines['bottom'].set_linewidth(10)
 
-    left, bottom, width, height = 0.73, 0.15, 0.23, 0.27
     ax2 = fig.add_axes(
-        [left, bottom, width, height],
+        [0.73, 0.15, 0.23, 0.27],  # left, bottom, width, height
         projection=ccrs.PlateCarree()
     )
-    # ax2.add_feature(provinces, linewidth=0.6, zorder=2)
     for border in borders:
         ax2.plot(border[0::2], border[1::2], color='black',
                  linewidth=1.5, transform=ccrs.PlateCarree(), alpha=0.2)
     ax2.add_feature(cfeature.COASTLINE.with_scale(
         '50m'), linewidth=0.6, zorder=10)
-    # ax2.add_feature(cfeature.RIVERS.with_scale('50m'), zorder=10)
-    # ax2.add_feature(cfeature.LAKES.with_scale('50m'), zorder=10)
     ax2.add_feature(cfeature.LAND.with_scale('110m'))
     ax2.add_feature(cfeature.OCEAN.with_scale('110m'))
     ax2.set_extent([105, 125, 0, 25])
-    # ax2.imshow(, extent=[105, 125, 0, 25], transform=ccrs.PlateCarree(), zorder=0, cmap='gray')
     ax2.scatter(lons, lats, c=values, s=1, transform=ccrs.PlateCarree(),
                 cmap=cm.Spectral_r, norm=norm, alpha=1)
     ax.spines['left'].set_visible(False)
@@ -194,18 +219,36 @@ def draw(*, saveto,  vmin, vmax, lons, lats, values, dpi, trtext=None):
 
 def main():
     args = argparser.parse_args()
-
     data = pd.read_csv(os.path.join(pwd, args.input))
-    lons = data[args.lonName]
-    lats = data[args.latName]
-    values = np.array(data[args.dataName])
+    lons = data[args.lonName].values.reshape((len(data[args.lonName]),))
+    lats = data[args.latName].values.reshape((len(data[args.latName]),))
+    values = data[args.dataName].values.reshape((len(data[args.dataName]),))
     vmin = values.min()
     vmax = values.max()
+    dataDict = {}
+    for lon, lat, value in data.values:
+        dataDict[(lon, lat)] = value
+    with shapefile.Reader(os.path.join(currFileDir, './Hangzhou-Shp/HZQX.shp'), encoding='GBK') as shapef:
+        shapes = shapef.shapes()
+        HZPolygon = [*map(lambda shape:np.array(shape.points).T,  shapes)]
+    HZStartLon = np.min([*map(lambda points:np.min(points[0]), HZPolygon)])
+    HZEndLon = np.max([*map(lambda points:np.max(points[0]), HZPolygon)])
+    HZStartLat = np.min([*map(lambda points:np.min(points[1]), HZPolygon)])
+    HZEndLat = np.max([*map(lambda points:np.max(points[1]), HZPolygon)])
+    # 杭州浓度采样点
+    HZDataList = []
+    for lon, lat in zip(lons, lats):
+        if lon >= HZStartLon and lon <= HZEndLon and lat >= HZStartLat and lat <= HZEndLat:
+            if isInPolygon((lon, lat), shapes):
+                HZDataList.append(dataDict[(lon, lat)])
+    HZAvg = round(np.mean(HZDataList), 2)
+
     draw(saveto=args.output,
          vmin=vmin, vmax=vmax,
          lons=lons, lats=lats,
          values=values,
-         trtext=args.trtext,
+         text=str(HZAvg),
+         unit=args.unit,
          dpi=args.dpi,)
 
 
