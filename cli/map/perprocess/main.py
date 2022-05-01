@@ -11,19 +11,20 @@ import BuildMap as bm
 import MainCalculatePart as mcp
 import WriteCsv as wc
 import FindDate as fd
-pwd = os.path.dirname(__file__)
-O3inpath = os.path.join(pwd, "./input/O3")
-O3outpath = os.path.join(pwd, "./output/O3")
-SPinpath = os.path.join(pwd, "./input/SP")
-SPoutpath = os.path.join(pwd, "./output/SP")
+currDir = os.path.dirname(__file__)
+O3inpath = os.path.join(currDir, "./input/O3")
+O3outpath = os.path.join(currDir, "./output/O3")
+SPinpath = os.path.join(currDir, "./input/SP")
+SPoutpath = os.path.join(currDir, "./output/SP")
+PM25inputpath = os.path.join(currDir, "./input/PM25")
 
 # 需填写起止日期，例：python main.py -b 2022-02-23 -e 2022-02-24
 
 argparser = argparse.ArgumentParser(description='InitDate')
-argparser.add_argument('--beg', '-b', type = str, 
-                       required = True, help = 'Begin date, format:XXXX-XX-XX')
-argparser.add_argument('--end', '-e', type = str, 
-                       required = True, help = 'End date, format:XXXX-XX-XX')
+argparser.add_argument('--beg', '-b', type=str,
+                       required=True, help='Begin date, format:XXXX-XX-XX')
+argparser.add_argument('--end', '-e', type=str,
+                       required=True, help='End date, format:XXXX-XX-XX')
 args = argparser.parse_args()
 
 # 建立10倍权值表
@@ -32,11 +33,11 @@ w = cw.run()
 # 处理O3
 print("开始处理O3")
 
-#查找日期
+# 查找日期
 file_name = os.listdir(O3inpath)
 needfile_name = fd.run(args.beg, args.end, file_name)
 
-#主体
+# 主体
 for loop in range(len(needfile_name)):
     print("处理日期为" + needfile_name[loop][0:8] + "的O3数据")
 
