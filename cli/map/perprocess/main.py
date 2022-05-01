@@ -1,3 +1,7 @@
+from util import basenameWithoutExt
+import zipfile
+import pandas
+import requests
 import os
 import math
 import csv
@@ -11,21 +15,34 @@ import BuildMap as bm
 import MainCalculatePart as mcp
 import WriteCsv as wc
 import FindDate as fd
+import PM25DataProcessor
+
 currDir = os.path.dirname(__file__)
 O3inpath = os.path.join(currDir, "./input/O3")
 O3outpath = os.path.join(currDir, "./output/O3")
 SPinpath = os.path.join(currDir, "./input/SP")
 SPoutpath = os.path.join(currDir, "./output/SP")
 PM25inputpath = os.path.join(currDir, "./input/PM25")
+PM25outputpath = os.path.join(currDir, "./output/PM25")
+
 
 # 需填写起止日期，例：python main.py -b 2022-02-23 -e 2022-02-24
 
 argparser = argparse.ArgumentParser(description='InitDate')
 argparser.add_argument('--beg', '-b', type=str,
-                       required=True, help='Begin date, format:XXXX-XX-XX')
+                       required=False, help='Begin date, format:XXXX-XX-XX')
 argparser.add_argument('--end', '-e', type=str,
-                       required=True, help='End date, format:XXXX-XX-XX')
+                       required=False, help='End date, format:XXXX-XX-XX')
 args = argparser.parse_args()
+
+# 处理 PM25
+print("开始处理 PM25")
+for urlFilename in os.listdir(PM25inputpath):
+    print(f'处理文件：{urlFilename}')
+    with open(os.path.join(PM25inputpath, urlFilename)) as f:
+        csvStr = PM25DataProcessor.saveFromUrls(f.read().splitlines(), os.path.join(
+            PM25outputpath), f'{basenameWithoutExt(urlFilename)}.csv')
+
 
 # 建立10倍权值表
 w = cw.run()
