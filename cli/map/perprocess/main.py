@@ -26,6 +26,8 @@ PM25inputpath = os.path.join(currDir, "./input/PM25")
 PM25outputpath = os.path.join(currDir, "./output/PM25")
 
 
+#用于插值的总程序
+
 # 需填写起止日期，例：python main.py -b 2022-02-23 -e 2022-02-24
 
 argparser = argparse.ArgumentParser(description='InitDate')
