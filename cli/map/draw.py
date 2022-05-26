@@ -75,7 +75,7 @@ def scale_bar(ax, length=None, location=(0.5, 0.05), linewidth=3):
 
 
 # https://blog.csdn.net/qq_32832803/article/details/110910540
-def add_north(ax1, labelsize=20, loc_x=0.92, loc_y=0.9, width=0.03, height=0.1, pad=0.14):
+def add_north(ax1, labelsize=15, loc_x=0.92, loc_y=0.9, width=0.02, height=0.07, pad=0.14):
     """
     画一个比例尺带'N'文字注释
     主要参数如下
@@ -138,7 +138,7 @@ def isInPolygon(position, polygons):  # 传参为待测点和多边形,判断该
     return False
 
 
-def draw(*, saveto,  vmin, vmax, lons, lats, values, dpi, unit, text):
+def draw(*, saveto,  vmin, vmax, lons, lats, values, dpi, unit,):
     fig = plt.figure(figsize=[15, 10], dpi=150)
     ax = plt.axes(projection=ccrs.PlateCarree())
     ax.set_extent([72, 140, 15, 55], crs=ccrs.PlateCarree())
@@ -151,11 +151,16 @@ def draw(*, saveto,  vmin, vmax, lons, lats, values, dpi, unit, text):
 
     # 绘制国界省界
     for border in borders:
-        ax.plot(border[0::2], border[1::2], color='black', linewidth=1.5,
+        ax.plot(border[0::2], border[1::2], color='black', linewidth=2.25,
                 transform=ccrs.PlateCarree(), alpha=0.2, zorder=3)
     ax.add_feature(cfeature.LAND.with_scale('110m'))
     ax.add_feature(cfeature.OCEAN.with_scale('110m'))
-
+    with shapefile.Reader(os.path.join(currFileDir, './Hangzhou-Shp/HZ.shp'), encoding='GBK') as shapef:
+        shapes = shapef.shapes()
+        HZPolygon = [*map(lambda shape:np.array(shape.points).T,  shapes)]
+    for points in HZPolygon:
+        ax.plot(points[0], points[1], color='white', linewidth=2.25,
+                transform=ccrs.PlateCarree(), alpha=1, zorder=3)
     # 底图灰色遮罩
     # ax.add_geometries([mpatches.Polygon(np.array([[72, 3], [140, 3], [140, 55], [72, 55]]))],
     #                   ccrs.PlateCarree(), facecolor='gray', edgecolor='k', linewidth=1.5, alpha=0.3, zorder=1)
@@ -182,21 +187,23 @@ def draw(*, saveto,  vmin, vmax, lons, lats, values, dpi, unit, text):
     # cb.ax.yaxis.set_tick_params(pad=22)  # your number may vary
 
     # 右上角 text
-    ax.text(1.15, 0.98, f'{text}{unit}', transform=ax.transAxes, fontsize=16,
-            horizontalalignment='right', verticalalignment='top', zorder=3)
+    # ax.text(1.15, 0.98, f'{text}{unit}', transform=ax.transAxes, fontsize=16,
+    #         horizontalalignment='right', verticalalignment='top', zorder=3)
 
     # 经纬度 刻度
-    gl = ax.gridlines(draw_labels=True, linewidth=0.6, color='black',
+    gl = ax.gridlines(draw_labels=False, linewidth=0.6, color='black',
                       alpha=0.5, linestyle='--', crs=ccrs.PlateCarree(),)
-    gl.top_labels = False
-    gl.right_labels = False
-    ax.tick_params(axis='both', which='major', labelsize=16, direction='out')
+    # gl.top_labels = False
+    # gl.right_labels = False
+    # ax.tick_params(axis='both', which='major', labelsize=16, direction='out')
     # 绘制比例尺
-    scale_bar(ax, 1000, location=(0.5, 0.05))
+    # scale_bar(ax, 1000, location=(0.5, 0.05))
     # 右上角绘制指北针
-    add_north(ax, loc_x=0.95)
+    add_north(ax, loc_x=0.97, loc_y=1.02)
+    import math
     ax2 = fig.add_axes(
-        [0.73, 0.15, 0.23, 0.27],  # left, bottom, width, height
+        # left, bottom, width, height
+        [0.798, 0.14, 0.23 * 1 / math.sqrt(2), 0.27 * 1 / math.sqrt(2)],
         projection=ccrs.PlateCarree()
     )
     for border in borders:
@@ -222,29 +229,27 @@ def main():
     values = data[args.dataName].values.reshape((len(data[args.dataName]),))
     vmin = values.min()
     vmax = values.max()
-    dataDict = {}
-    for lon, lat, value in data.values:
-        dataDict[(lon, lat)] = value
-    with shapefile.Reader(os.path.join(currFileDir, './Hangzhou-Shp/HZQX.shp'), encoding='GBK') as shapef:
-        shapes = shapef.shapes()
-        HZPolygon = [*map(lambda shape:np.array(shape.points).T,  shapes)]
-    HZStartLon = np.min([*map(lambda points:np.min(points[0]), HZPolygon)])
-    HZEndLon = np.max([*map(lambda points:np.max(points[0]), HZPolygon)])
-    HZStartLat = np.min([*map(lambda points:np.min(points[1]), HZPolygon)])
-    HZEndLat = np.max([*map(lambda points:np.max(points[1]), HZPolygon)])
-    # 杭州浓度采样点
-    HZDataList = []
-    for lon, lat in zip(lons, lats):
-        if lon >= HZStartLon and lon <= HZEndLon and lat >= HZStartLat and lat <= HZEndLat:
-            if isInPolygon((lon, lat), shapes):
-                HZDataList.append(dataDict[(lon, lat)])
-    HZAvg = round(np.mean(HZDataList), 2)
+    # dataDict = {}
+    # for lon, lat, value in data.values:
+    #     dataDict[(lon, lat)] = value
+
+    # HZStartLon = np.min([*map(lambda points:np.min(points[0]), HZPolygon)])
+    # HZEndLon = np.max([*map(lambda points:np.max(points[0]), HZPolygon)])
+    # HZStartLat = np.min([*map(lambda points:np.min(points[1]), HZPolygon)])
+    # HZEndLat = np.max([*map(lambda points:np.max(points[1]), HZPolygon)])
+    # # 杭州浓度采样点
+    # HZDataList = []
+    # for lon, lat in zip(lons, lats):
+    #     if lon >= HZStartLon and lon <= HZEndLon and lat >= HZStartLat and lat <= HZEndLat:
+    #         if isInPolygon((lon, lat), shapes):
+    #             HZDataList.append(dataDict[(lon, lat)])
+    # HZAvg = round(np.mean(HZDataList), 2)
 
     draw(saveto=args.output,
          vmin=vmin, vmax=vmax,
          lons=lons, lats=lats,
          values=values,
-         text=str(HZAvg),
+         #  text=str(HZAvg),
          unit=args.unit,
          dpi=args.dpi,)
 
